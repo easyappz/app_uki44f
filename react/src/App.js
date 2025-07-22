@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Switch, Link, Redirect } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
 import ErrorBoundary from './ErrorBoundary';
 import Register from './components/Auth/Register';
@@ -45,17 +45,23 @@ function App() {
           <Content style={{ padding: '0 50px' }}>
             <div className="site-layout-content">
               {isAuthenticated && <UserStats />}
-              <Switch>
-                <Route exact path="/" render={() => (
-                  isAuthenticated ? <Redirect to="/my-photos" /> : <Redirect to="/login" />
-                )} />
-                <Route path="/register" component={Register} />
-                <Route path="/login" component={Login} />
-                <Route path="/forgot-password" component={ForgotPassword} />
-                <PrivateRoute path="/upload-photo" component={PhotoUpload} />
-                <PrivateRoute path="/my-photos" component={PhotoList} />
-                <PrivateRoute path="/rate-photos" component={PhotoRating} />
-              </Switch>
+              <Routes>
+                <Route exact path="/" element={
+                  isAuthenticated ? <Navigate to="/my-photos" replace /> : <Navigate to="/login" replace />
+                } />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/upload-photo" element={
+                  isAuthenticated ? <PhotoUpload /> : <Navigate to="/login" replace />
+                } />
+                <Route path="/my-photos" element={
+                  isAuthenticated ? <PhotoList /> : <Navigate to="/login" replace />
+                } />
+                <Route path="/rate-photos" element={
+                  isAuthenticated ? <PhotoRating /> : <Navigate to="/login" replace />
+                } />
+              </Routes>
             </div>
           </Content>
           <Footer style={{ textAlign: 'center' }}>Photo Rating App ©2023</Footer>
@@ -64,21 +70,5 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-const PrivateRoute = ({ component: Component, ...rest }) => {
-  const isAuthenticated = !!localStorage.getItem('token');
-  return (
-    <Route
-      {...rest}
-      render={props =>
-        isAuthenticated ? (
-          <Component {...props} />
-        ) : (
-          <Redirect to="/login" />
-        )
-      }
-    />
-  );
-};
 
 export default App;
