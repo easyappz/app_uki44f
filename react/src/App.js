@@ -8,6 +8,7 @@ import ForgotPassword from './components/Auth/ForgotPassword';
 import PhotoUpload from './components/PhotoUpload';
 import PhotoList from './components/PhotoList';
 import PhotoRating from './components/PhotoRating';
+import UserStats from './components/UserStats';
 import './App.css';
 
 const { Header, Content, Footer } = Layout;
@@ -43,6 +44,7 @@ function App() {
           </Header>
           <Content style={{ padding: '0 50px' }}>
             <div className="site-layout-content">
+              {isAuthenticated && <UserStats />}
               <Switch>
                 <Route exact path="/" render={() => (
                   isAuthenticated ? <Redirect to="/my-photos" /> : <Redirect to="/login" />
