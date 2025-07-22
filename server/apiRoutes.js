@@ -38,7 +38,7 @@ const authenticateUser = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ message: 'Invalid token', error: error.message });
   }
 };
 
@@ -46,8 +46,16 @@ const authenticateUser = (req, res, next) => {
 router.post('/register', async (req, res) => {
   try {
     const { email, password, gender, age } = req.body;
-    if (!email || !password || !gender || !age) {
+    if (!email || !password || !gender || age === undefined) {
       return res.status(400).json({ message: 'All fields are required' });
+    }
+    
+    if (age < 18 || age > 100) {
+      return res.status(400).json({ message: 'Age must be between 18 and 100' });
+    }
+    
+    if (!['male', 'female', 'other'].includes(gender)) {
+      return res.status(400).json({ message: 'Invalid gender value' });
     }
     
     const existingUser = await User.findOne({ email });
