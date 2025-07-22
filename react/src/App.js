@@ -6,6 +6,7 @@ import Login from './components/Auth/Login';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import PhotoUpload from './components/PhotoUpload';
 import PhotoList from './components/PhotoList';
+import PhotoRating from './components/PhotoRating';
 import './App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
               <li><Link to="/forgot-password">Забыли пароль?</Link></li>
               <li><Link to="/upload-photo">Загрузить фото</Link></li>
               <li><Link to="/my-photos">Мои фотографии</Link></li>
+              <li><Link to="/rate-photos">Оценка фотографий</Link></li>
             </ul>
           </nav>
 
@@ -29,6 +31,7 @@ function App() {
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/upload-photo" component={PhotoUpload} />
             <Route path="/my-photos" component={PhotoList} />
+            <Route path="/rate-photos" component={PhotoRating} />
           </Switch>
         </div>
       </Router>
