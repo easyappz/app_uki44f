@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: User Authentication API
+  title: Photo Rating API
   version: 1.0.0
 paths:
   /api/register:
@@ -15,6 +15,8 @@ paths:
               required:
                 - email
                 - password
+                - gender
+                - age
               properties:
                 email:
                   type: string
@@ -22,6 +24,13 @@ paths:
                 password:
                   type: string
                   format: password
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                age:
+                  type: integer
+                  minimum: 18
+                  maximum: 100
       responses:
         '201':
           description: User registered successfully
@@ -62,9 +71,11 @@ paths:
           description: Bad request
         '500':
           description: Server error
-  /api/forgot-password:
+  /api/upload-photo:
     post:
-      summary: Request password reset
+      summary: Upload a new photo
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -72,32 +83,42 @@ paths:
             schema:
               type: object
               required:
-                - email
+                - url
               properties:
-                email:
+                url:
                   type: string
-                  format: email
+      responses:
+        '201':
+          description: Photo uploaded successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+  /api/photos-to-rate:
+    get:
+      summary: Get photos to rate
+      security:
+        - BearerAuth: []
       responses:
         '200':
-          description: Password reset token generated
+          description: List of photos to rate
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  resetToken:
-                    type: string
-        '400':
-          description: Bad request
-        '404':
-          description: User not found
+                type: array
+                items:
+                  $ref: '#/components/schemas/Photo'
+        '401':
+          description: Unauthorized
         '500':
           description: Server error
-  /api/reset-password:
+  /api/rate-photo:
     post:
-      summary: Reset password
+      summary: Rate a photo
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -105,18 +126,80 @@ paths:
             schema:
               type: object
               required:
-                - resetToken
-                - newPassword
+                - photoId
+                - rating
               properties:
-                resetToken:
+                photoId:
                   type: string
-                newPassword:
+                rating:
                   type: string
-                  format: password
+                  enum: [like, dislike]
       responses:
         '200':
-          description: Password reset successful
+          description: Photo rated successfully
         '400':
           description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Photo not found
         '500':
           description: Server error
+  /api/user-photos:
+    get:
+      summary: Get user's photos
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of user's photos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Photo'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+  /api/delete-photo/{photoId}:
+    delete:
+      summary: Delete a user's photo
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: photoId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Photo deleted successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Photo not found or not owned by user
+        '500':
+          description: Server error
+components:
+  schemas:
+    Photo:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        url:
+          type: string
+        likes:
+          type: integer
+        dislikes:
+          type: integer
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -9,19 +9,45 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   resetToken: String,
-  resetTokenExpiration: Date
+  resetTokenExpiration: Date,
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  age: { type: Number, min: 18, max: 100 },
+  points: { type: Number, default: 100 }
 });
 
 const User = mongoose.model('User', UserSchema);
 
+const PhotoSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  url: { type: String, required: true },
+  likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 }
+});
+
+const Photo = mongoose.model('Photo', PhotoSchema);
+
 const JWT_SECRET = 'your_jwt_secret';
+
+// Middleware to authenticate user
+const authenticateUser = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ message: 'Authentication required' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
 
 // POST /api/register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    const { email, password, gender, age } = req.body;
+    if (!email || !password || !gender || !age) {
+      return res.status(400).json({ message: 'All fields are required' });
     }
     
     const existingUser = await User.findOne({ email });
@@ -30,7 +56,7 @@ router.post('/register', async (req, res) => {
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ email, password: hashedPassword, gender, age });
     await user.save();
     
     res.status(201).json({ message: 'User registered successfully' });
@@ -64,58 +90,105 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/forgot-password
-router.post('/forgot-password', async (req, res) => {
+// POST /api/upload-photo
+router.post('/upload-photo', authenticateUser, async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ message: 'Photo URL is required' });
     }
-    
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+
+    const user = await User.findById(req.user.userId);
+    if (user.points < 10) {
+      return res.status(400).json({ message: 'Not enough points to upload a photo' });
     }
-    
-    const resetToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-    user.resetToken = resetToken;
-    user.resetTokenExpiration = Date.now() + 3600000; // 1 hour
+
+    const photo = new Photo({ userId: req.user.userId, url });
+    await photo.save();
+
+    user.points -= 10;
     await user.save();
-    
-    // Here you would typically send an email with the reset token
-    // For this example, we'll just return it in the response
-    res.json({ message: 'Password reset token generated', resetToken });
+
+    res.status(201).json({ message: 'Photo uploaded successfully', photo });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating reset token', error: error.message });
+    res.status(500).json({ message: 'Error uploading photo', error: error.message });
   }
 });
 
-// POST /api/reset-password
-router.post('/reset-password', async (req, res) => {
+// GET /api/photos-to-rate
+router.get('/photos-to-rate', authenticateUser, async (req, res) => {
   try {
-    const { resetToken, newPassword } = req.body;
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ message: 'Reset token and new password are required' });
-    }
-    
-    const user = await User.findOne({
-      resetToken,
-      resetTokenExpiration: { $gt: Date.now() }
-    });
-    
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired reset token' });
-    }
-    
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.resetToken = undefined;
-    user.resetTokenExpiration = undefined;
-    await user.save();
-    
-    res.json({ message: 'Password reset successful' });
+    const user = await User.findById(req.user.userId);
+    const photos = await Photo.find({
+      userId: { $ne: req.user.userId },
+      $or: [
+        { likes: { $lt: 10 } },
+        { dislikes: { $lt: 10 } }
+      ]
+    }).limit(10);
+
+    res.json(photos);
   } catch (error) {
-    res.status(500).json({ message: 'Error resetting password', error: error.message });
+    res.status(500).json({ message: 'Error fetching photos', error: error.message });
+  }
+});
+
+// POST /api/rate-photo
+router.post('/rate-photo', authenticateUser, async (req, res) => {
+  try {
+    const { photoId, rating } = req.body;
+    if (!photoId || !['like', 'dislike'].includes(rating)) {
+      return res.status(400).json({ message: 'Invalid rating data' });
+    }
+
+    const photo = await Photo.findById(photoId);
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
+    }
+
+    const user = await User.findById(req.user.userId);
+
+    if (rating === 'like') {
+      photo.likes += 1;
+      user.points += 1;
+    } else {
+      photo.dislikes += 1;
+    }
+
+    await photo.save();
+    await user.save();
+
+    res.json({ message: 'Photo rated successfully', photo });
+  } catch (error) {
+    res.status(500).json({ message: 'Error rating photo', error: error.message });
+  }
+});
+
+// GET /api/user-photos
+router.get('/user-photos', authenticateUser, async (req, res) => {
+  try {
+    const photos = await Photo.find({ userId: req.user.userId });
+    res.json(photos);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user photos', error: error.message });
+  }
+});
+
+// DELETE /api/delete-photo/:photoId
+router.delete('/delete-photo/:photoId', authenticateUser, async (req, res) => {
+  try {
+    const photo = await Photo.findOneAndDelete({
+      _id: req.params.photoId,
+      userId: req.user.userId
+    });
+
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found or not owned by user' });
+    }
+
+    res.json({ message: 'Photo deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting photo', error: error.message });
   }
 });
 
