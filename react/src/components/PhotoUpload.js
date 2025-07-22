@@ -1,50 +1,39 @@
 import React, { useState } from 'react';
-import { instance } from '../api/axios';
+import { Form, Input, Button, message } from 'antd';
+import { uploadPhoto } from '../api/photos';
 
 const PhotoUpload = () => {
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file) {
-      setError('Пожалуйста, выберите файл');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('photo', file);
-
+  const onFinish = async (values) => {
+    setLoading(true);
     try {
-      await instance.post('/api/upload-photo', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      setSuccess('Фотография успешно загружена');
-      setError('');
-      setFile(null);
+      await uploadPhoto(values.url);
+      message.success('Фото успешно загружено');
+      form.resetFields();
     } catch (error) {
-      setError(error.response?.data?.message || 'Ошибка при загрузке фотографии');
-      setSuccess('');
+      message.error('Ошибка при загрузке фото');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="photo-upload">
-      <h2>Загрузка фотографии</h2>
-      {error && <p className="error">{error}</p>}
-      {success && <p className="success">{success}</p>}
-      <form onSubmit={handleSubmit}>
-        <input type="file" onChange={handleFileChange} accept="image/*" />
-        <button type="submit">Загрузить</button>
-      </form>
-    </div>
+    <Form form={form} onFinish={onFinish} layout="vertical">
+      <Form.Item
+        name="url"
+        label="URL фотографии"
+        rules={[{ required: true, message: 'Пожалуйста, введите URL фотографии' }]}
+      >
+        <Input />
+      </Form.Item>
+      <Form.Item>
+        <Button type="primary" htmlType="submit" loading={loading}>
+          Загрузить фото
+        </Button>
+      </Form.Item>
+    </Form>
   );
 };
 

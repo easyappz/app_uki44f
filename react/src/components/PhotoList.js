@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { instance } from '../api/axios';
+import React, { useEffect, useState } from 'react';
+import { List, Card, Button, message } from 'antd';
+import { getUserPhotos, deletePhoto } from '../api/photos';
 
 const PhotoList = () => {
   const [photos, setPhotos] = useState([]);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchPhotos();
@@ -11,36 +12,46 @@ const PhotoList = () => {
 
   const fetchPhotos = async () => {
     try {
-      const response = await instance.get('/api/user-photos');
-      setPhotos(response.data);
+      const data = await getUserPhotos();
+      setPhotos(data);
     } catch (error) {
-      setError('Ошибка при загрузке фотографий');
+      message.error('Ошибка при загрузке фотографий');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const togglePhotoStatus = async (photoId, isActive) => {
+  const handleDelete = async (photoId) => {
     try {
-      await instance.post(`/api/toggle-photo-status/${photoId}`, { isActive });
-      fetchPhotos(); // Обновляем список после изменения статуса
+      await deletePhoto(photoId);
+      message.success('Фото успешно удалено');
+      fetchPhotos();
     } catch (error) {
-      setError('Ошибка при изменении статуса фотографии');
+      message.error('Ошибка при удалении фото');
     }
   };
 
   return (
-    <div className="photo-list">
-      <h2>Ваши фотографии</h2>
-      {error && <p className="error">{error}</p>}
-      {photos.map(photo => (
-        <div key={photo._id} className="photo-item">
-          <img src={photo.url} alt="Uploaded" />
-          <p>Пол: {photo.gender}, Возраст: {photo.age}</p>
-          <button onClick={() => togglePhotoStatus(photo._id, !photo.isActive)}>
-            {photo.isActive ? 'Деактивировать' : 'Активировать'}
-          </button>
-        </div>
-      ))}
-    </div>
+    <List
+      grid={{ gutter: 16, column: 3 }}
+      dataSource={photos}
+      loading={loading}
+      renderItem={(photo) => (
+        <List.Item>
+          <Card
+            cover={<img alt="photo" src={photo.url} />}
+            actions={[
+              <Button onClick={() => handleDelete(photo._id)}>Удалить</Button>
+            ]}
+          >
+            <Card.Meta
+              title={`Лайки: ${photo.likes}`}
+              description={`Дизлайки: ${photo.dislikes}`}
+            />
+          </Card>
+        </List.Item>
+      )}
+    />
   );
 };
 
