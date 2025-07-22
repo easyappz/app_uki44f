@@ -2,29 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const User = require('./models/user');
+const Photo = require('./models/photo');
 
 const router = express.Router();
-
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  resetToken: String,
-  resetTokenExpiration: Date,
-  gender: { type: String, enum: ['male', 'female', 'other'] },
-  age: { type: Number, min: 18, max: 100 },
-  points: { type: Number, default: 100 }
-});
-
-const User = mongoose.model('User', UserSchema);
-
-const PhotoSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  url: { type: String, required: true },
-  likes: { type: Number, default: 0 },
-  dislikes: { type: Number, default: 0 }
-});
-
-const Photo = mongoose.model('Photo', PhotoSchema);
 
 const JWT_SECRET = 'your_jwt_secret';
 
