@@ -4,6 +4,8 @@ import ErrorBoundary from './ErrorBoundary';
 import Register from './components/Auth/Register';
 import Login from './components/Auth/Login';
 import ForgotPassword from './components/Auth/ForgotPassword';
+import PhotoUpload from './components/PhotoUpload';
+import PhotoList from './components/PhotoList';
 import './App.css';
 
 function App() {
@@ -16,6 +18,8 @@ function App() {
               <li><Link to="/register">Регистрация</Link></li>
               <li><Link to="/login">Вход</Link></li>
               <li><Link to="/forgot-password">Забыли пароль?</Link></li>
+              <li><Link to="/upload-photo">Загрузить фото</Link></li>
+              <li><Link to="/my-photos">Мои фотографии</Link></li>
             </ul>
           </nav>
 
@@ -23,6 +27,8 @@ function App() {
             <Route path="/register" component={Register} />
             <Route path="/login" component={Login} />
             <Route path="/forgot-password" component={ForgotPassword} />
+            <Route path="/upload-photo" component={PhotoUpload} />
+            <Route path="/my-photos" component={PhotoList} />
           </Switch>
         </div>
       </Router>
