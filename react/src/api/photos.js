@@ -12,8 +12,8 @@ export const deletePhoto = (photoId) => {
   return instance.delete(`/api/delete-photo/${photoId}`);
 };
 
-export const getPhotosToRate = () => {
-  return instance.get('/api/photos-to-rate');
+export const getPhotosToRate = (filters) => {
+  return instance.get('/api/photos-to-rate', { params: filters });
 };
 
 export const ratePhoto = (photoId, rating) => {
